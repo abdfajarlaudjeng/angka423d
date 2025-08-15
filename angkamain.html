@@ -3,23 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Data 2D dengan Filter & Validasi</title>
+  <title>Data 2D dengan Filter AS & Validasi</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-4">
   <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg p-4">
     <h1 class="text-2xl font-bold mb-4">Data 2D - Google Sheets</h1>
 
-    <!-- Input Filter -->
+    <!-- Filter -->
     <div class="mb-4 grid grid-cols-3 gap-4">
       <div>
         <label class="block font-semibold mb-1">Filter 2D</label>
         <input id="filter2D" type="text" maxlength="2" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring" placeholder="Misal: 16 atau 1">
       </div>
-
       <div>
         <label class="block font-semibold mb-1">Filter AS</label>
-        <select id="filterAs" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring">
+        <select id="filterAS" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring">
           <option value="">Semua</option>
           <option value="0">AS 0</option>
           <option value="1">AS 1</option>
@@ -33,10 +32,9 @@
           <option value="9">AS 9</option>
         </select>
       </div>
-
       <div>
         <label class="block font-semibold mb-1">Angka Main</label>
-        <textarea id="angkaMain" rows="2" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring" placeholder="Pisahkan dengan spasi atau koma"></textarea>
+        <textarea id="angkaMain" rows="1" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring" placeholder="Pisahkan dengan spasi atau koma"></textarea>
       </div>
     </div>
 
@@ -47,12 +45,19 @@
         <tbody id="tbody"></tbody>
       </table>
     </div>
+
+    <!-- Daftar angka 2D -->
+    <div class="mt-4">
+      <h2 class="text-lg font-semibold mb-2">Angka 2D Hasil Filter:</h2>
+      <div id="list2D" class="p-2 border rounded bg-gray-50 text-sm leading-relaxed break-words"></div>
+    </div>
   </div>
 
   <script>
     let data = [];
     const thead = document.getElementById("thead");
     const tbody = document.getElementById("tbody");
+    const list2D = document.getElementById("list2D");
 
     async function fetchData() {
       const url = "https://docs.google.com/spreadsheets/d/1tX6qfI_0PhrpmGxz4qqaT0_8YHKhPwE3dPHguPvNFmU/gviz/tq?tqx=out:json&sheet=DATA%202D";
@@ -68,22 +73,25 @@
         return row;
       });
 
+      const keys = Object.keys(data[0]);
+      buildHeader(keys);
       renderTable();
     }
 
     function buildHeader(keys) {
       thead.innerHTML = "";
       const tr = document.createElement("tr");
+
       keys.forEach(k => {
         const th = document.createElement("th");
         th.textContent = k;
-        th.className = "px-3 py-2 text-left font-semibold border whitespace-normal break-words";
+        th.className = "px-3 py-2 text-left font-semibold border";
         tr.appendChild(th);
       });
 
       const thValidasi = document.createElement("th");
       thValidasi.textContent = "Validasi";
-      thValidasi.className = "px-3 py-2 text-left font-semibold border whitespace-normal break-words";
+      thValidasi.className = "px-3 py-2 text-left font-semibold border";
       tr.appendChild(thValidasi);
 
       thead.appendChild(tr);
@@ -91,64 +99,26 @@
 
     function renderTable() {
       const filter2D = document.getElementById("filter2D").value.trim();
-      const filterAs = document.getElementById("filterAs").value.trim();
+      const filterAS = document.getElementById("filterAS").value.trim();
       const angkaMainList = document.getElementById("angkaMain").value
         .split(/[\s,]+/)
         .map(s => s.trim())
         .filter(s => s !== "");
 
-      tbody.innerHTML = "";
-
-      if (filterAs) {
-        buildHeader(["AS", "2D"]);
-
-        data.forEach(r => {
-          const asValue = String(r["As"] ?? "").trim();
-          const angka2D = String(r["2D"] ?? "").padStart(2, "0");
-
-          if (asValue !== filterAs) return;
-
-          const tr = document.createElement("tr");
-
-          const tdAs = document.createElement("td");
-          tdAs.textContent = asValue;
-          tdAs.className = "px-3 py-2 border whitespace-normal break-words";
-          tr.appendChild(tdAs);
-
-          const td2D = document.createElement("td");
-          td2D.textContent = angka2D;
-          td2D.className = "px-3 py-2 border whitespace-normal break-words";
-          tr.appendChild(td2D);
-
-          const tdValidasi = document.createElement("td");
-          tdValidasi.className = "px-3 py-2 border text-center whitespace-normal break-words";
-
-          if (angkaMainList.length && angkaMainList.includes(angka2D)) {
-            tr.classList.add("bg-green-100");
-            tdValidasi.textContent = "✅ Cocok";
-            tdValidasi.classList.add("text-green-600", "font-semibold");
-          } else if (angkaMainList.length) {
-            tr.classList.add("bg-red-100");
-            tdValidasi.textContent = "❌ Tidak Cocok";
-            tdValidasi.classList.add("text-red-600", "font-semibold");
-          } else {
-            tdValidasi.textContent = "-";
-          }
-          tr.appendChild(tdValidasi);
-
-          tbody.appendChild(tr);
-        });
-
-        return;
-      }
-
       const keys = Object.keys(data[0]);
-      buildHeader(keys);
+      tbody.innerHTML = "";
+      let angka2DList = [];
 
       data.forEach(r => {
         const kepala = String(r["Kepala"] ?? "").padStart(2, "0");
         const ekor = String(r["Ekor"] ?? "").padStart(2, "0");
+        const asVal = String(r["AS"] ?? "").trim();
+        const angka2D = String(r["2D"] ?? "").padStart(2, "0");
 
+        // Filter AS
+        if (filterAS && asVal !== filterAS) return;
+
+        // Filter 2D
         if (filter2D) {
           if (filter2D.length === 1) {
             if (!(kepala.startsWith(filter2D) || ekor.endsWith(filter2D))) return;
@@ -157,45 +127,49 @@
           }
         }
 
+        angka2DList.push(angka2D);
+
         const tr = document.createElement("tr");
         keys.forEach(k => {
           const td = document.createElement("td");
           td.textContent = r[k] ?? "";
-          td.className = "px-3 py-2 border whitespace-normal break-words";
+          td.className = "px-3 py-2 border";
 
+          // Highlight kepala/ekor sesuai filter
           if (filter2D) {
             if ((filter2D.length === 1 && ((k === "Kepala" && kepala.startsWith(filter2D)) || (k === "Ekor" && ekor.endsWith(filter2D)))) ||
                 (filter2D.length === 2 && ((k === "Kepala" && kepala === filter2D) || (k === "Ekor" && ekor === filter2D)))) {
               td.classList.add("bg-yellow-200", "font-bold");
             }
           }
-
           tr.appendChild(td);
         });
 
+        // Validasi Angka Main
         const tdValidasi = document.createElement("td");
-        tdValidasi.className = "px-3 py-2 border text-center whitespace-normal break-words";
-        const angka2D = String(r["2D"] ?? "").padStart(2, "0");
-
         if (angkaMainList.length && angkaMainList.includes(angka2D)) {
           tr.classList.add("bg-green-100");
           tdValidasi.textContent = "✅ Cocok";
-          tdValidasi.classList.add("text-green-600", "font-semibold");
+          tdValidasi.classList.add("text-green-600", "font-semibold", "px-3", "py-2", "border", "text-center");
         } else if (angkaMainList.length) {
           tr.classList.add("bg-red-100");
           tdValidasi.textContent = "❌ Tidak Cocok";
-          tdValidasi.classList.add("text-red-600", "font-semibold");
+          tdValidasi.classList.add("text-red-600", "font-semibold", "px-3", "py-2", "border", "text-center");
         } else {
           tdValidasi.textContent = "-";
+          tdValidasi.classList.add("px-3", "py-2", "border", "text-center");
         }
-
         tr.appendChild(tdValidasi);
+
         tbody.appendChild(tr);
       });
+
+      // Tampilkan daftar angka 2D
+      list2D.textContent = angka2DList.join(", ");
     }
 
     document.getElementById("filter2D").addEventListener("input", renderTable);
-    document.getElementById("filterAs").addEventListener("change", renderTable);
+    document.getElementById("filterAS").addEventListener("change", renderTable);
     document.getElementById("angkaMain").addEventListener("input", renderTable);
 
     fetchData();
