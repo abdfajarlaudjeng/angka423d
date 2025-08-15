@@ -3,20 +3,27 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Data 2D dengan Validasi</title>
+  <title>Data 2D dengan Filter & Validasi</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-4">
   <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg p-4">
     <h1 class="text-2xl font-bold mb-4">Data 2D - Google Sheets</h1>
 
-    <!-- Input Angka Main -->
-    <div class="mb-4">
-      <label for="angkaMain" class="block font-semibold mb-1">Angka Main</label>
-      <textarea id="angkaMain" rows="2" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring" placeholder="Pisahkan dengan spasi atau koma"></textarea>
+    <!-- Input Filter & Angka Main -->
+    <div class="mb-4 grid grid-cols-2 gap-4">
+      <div>
+        <label class="block font-semibold mb-1">Filter 2D</label>
+        <input id="filter2D" type="text" maxlength="2" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring" placeholder="Misal: 16 atau 1">
+      </div>
+
+      <div>
+        <label class="block font-semibold mb-1">Angka Main</label>
+        <textarea id="angkaMain" rows="2" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring" placeholder="Pisahkan dengan spasi atau koma"></textarea>
+      </div>
     </div>
 
-    <!-- Table -->
+    <!-- Tabel -->
     <div class="overflow-x-auto">
       <table class="min-w-full border border-gray-300 text-sm">
         <thead id="thead" class="bg-gray-200"></thead>
@@ -26,12 +33,9 @@
   </div>
 
   <script>
+    let data = [];
     const thead = document.getElementById("thead");
     const tbody = document.getElementById("tbody");
-
-    let data = [];
-    let sortKey = null;
-    let sortDir = "asc";
 
     async function fetchData() {
       const url = "https://docs.google.com/spreadsheets/d/1tX6qfI_0PhrpmGxz4qqaT0_8YHKhPwE3dPHguPvNFmU/gviz/tq?tqx=out:json&sheet=DATA%202D";
@@ -49,7 +53,7 @@
 
       const keys = Object.keys(data[0]);
       buildHeader(keys);
-      buildBody(data, keys);
+      renderTable();
     }
 
     function buildHeader(keys) {
@@ -71,55 +75,72 @@
       thead.appendChild(tr);
     }
 
-    function buildBody(rows, keys) {
+    function renderTable() {
+      const filter2D = document.getElementById("filter2D").value.trim();
+      const angkaMainList = document.getElementById("angkaMain").value
+        .split(/[\s,]+/)
+        .map(s => s.trim())
+        .filter(s => s !== "");
+
+      const keys = Object.keys(data[0]);
       tbody.innerHTML = "";
-      rows.forEach(r => {
+
+      data.forEach(r => {
+        const kepala = String(r["Kepala"] ?? "").padStart(2, "0");
+        const ekor = String(r["Ekor"] ?? "").padStart(2, "0");
+
+        // Filter berdasarkan input 2D
+        if (filter2D) {
+          if (filter2D.length === 1) {
+            // Partial match: kepala diawali angka atau ekor diakhiri angka
+            if (!(kepala.startsWith(filter2D) || ekor.endsWith(filter2D))) return;
+          } else {
+            // Exact match untuk 2 digit
+            if (kepala !== filter2D && ekor !== filter2D) return;
+          }
+        }
+
         const tr = document.createElement("tr");
         keys.forEach(k => {
           const td = document.createElement("td");
           td.textContent = r[k] ?? "";
           td.className = "px-3 py-2 border";
+
+          // Highlight kolom Kepala/Ekor yang cocok
+          if (filter2D) {
+            if ((filter2D.length === 1 && ((k === "Kepala" && kepala.startsWith(filter2D)) || (k === "Ekor" && ekor.endsWith(filter2D)))) ||
+                (filter2D.length === 2 && ((k === "Kepala" && kepala === filter2D) || (k === "Ekor" && ekor === filter2D)))) {
+              td.classList.add("bg-yellow-200", "font-bold");
+            }
+          }
+
           tr.appendChild(td);
         });
 
+        // Validasi angka main
         const tdValidasi = document.createElement("td");
-        tdValidasi.textContent = "-";
-        tdValidasi.className = "px-3 py-2 border text-center";
-        tr.appendChild(tdValidasi);
+        const angka2D = String(r["2D"] ?? "").padStart(2, "0");
 
+        if (angkaMainList.length && angkaMainList.includes(angka2D)) {
+          tr.classList.add("bg-green-100");
+          tdValidasi.textContent = "✅ Cocok";
+          tdValidasi.classList.add("text-green-600", "font-semibold", "px-3", "py-2", "border", "text-center");
+        } else if (angkaMainList.length) {
+          tr.classList.add("bg-red-100");
+          tdValidasi.textContent = "❌ Tidak Cocok";
+          tdValidasi.classList.add("text-red-600", "font-semibold", "px-3", "py-2", "border", "text-center");
+        } else {
+          tdValidasi.textContent = "-";
+          tdValidasi.classList.add("px-3", "py-2", "border", "text-center");
+        }
+
+        tr.appendChild(tdValidasi);
         tbody.appendChild(tr);
       });
     }
 
-    function cekValidasi() {
-      const input = document.getElementById("angkaMain").value;
-      const angkaMainList = input.split(/[\s,]+/).map(s => s.trim()).filter(s => s !== "");
-
-      const rows = tbody.querySelectorAll("tr");
-      rows.forEach(row => {
-        const cells = row.querySelectorAll("td");
-        if (cells.length === 0) return;
-
-        const angka2D = cells[0].textContent.trim();
-        const cellValidasi = cells[cells.length - 1];
-
-        if (angkaMainList.includes(angka2D)) {
-          row.classList.remove("bg-red-100");
-          row.classList.add("bg-green-100");
-          cellValidasi.textContent = "✅ Cocok";
-          cellValidasi.classList.remove("text-red-600");
-          cellValidasi.classList.add("text-green-600", "font-semibold");
-        } else {
-          row.classList.remove("bg-green-100");
-          row.classList.add("bg-red-100");
-          cellValidasi.textContent = "❌ Tidak Cocok";
-          cellValidasi.classList.remove("text-green-600");
-          cellValidasi.classList.add("text-red-600", "font-semibold");
-        }
-      });
-    }
-
-    document.getElementById("angkaMain").addEventListener("input", cekValidasi);
+    document.getElementById("filter2D").addEventListener("input", renderTable);
+    document.getElementById("angkaMain").addEventListener("input", renderTable);
 
     fetchData();
   </script>
