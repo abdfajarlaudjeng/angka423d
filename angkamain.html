@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Data 2D dengan Filter & Validasi</title>
+  <title>Data 2D dengan Filter & Validasi + Filter As</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-4">
@@ -11,7 +11,7 @@
     <h1 class="text-2xl font-bold mb-4">Data 2D - Google Sheets</h1>
 
     <!-- Input Filter & Angka Main -->
-    <div class="mb-4 grid grid-cols-2 gap-4">
+    <div class="mb-4 grid grid-cols-3 gap-4">
       <div>
         <label class="block font-semibold mb-1">Filter 2D</label>
         <input id="filter2D" type="text" maxlength="2" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring" placeholder="Misal: 16 atau 1">
@@ -20,6 +20,13 @@
       <div>
         <label class="block font-semibold mb-1">Angka Main</label>
         <textarea id="angkaMain" rows="2" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring" placeholder="Pisahkan dengan spasi atau koma"></textarea>
+      </div>
+
+      <div>
+        <label class="block font-semibold mb-1">Filter As</label>
+        <select id="filterAs" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring">
+          <option value="">Semua</option>
+        </select>
       </div>
     </div>
 
@@ -36,6 +43,7 @@
     let data = [];
     const thead = document.getElementById("thead");
     const tbody = document.getElementById("tbody");
+    const filterAsSelect = document.getElementById("filterAs");
 
     async function fetchData() {
       const url = "https://docs.google.com/spreadsheets/d/1tX6qfI_0PhrpmGxz4qqaT0_8YHKhPwE3dPHguPvNFmU/gviz/tq?tqx=out:json&sheet=DATA%202D";
@@ -53,6 +61,7 @@
 
       const keys = Object.keys(data[0]);
       buildHeader(keys);
+      buildAsFilterOptions();
       renderTable();
     }
 
@@ -75,12 +84,19 @@
       thead.appendChild(tr);
     }
 
+    function buildAsFilterOptions() {
+      const uniqueAs = [...new Set(data.map(r => r["As"]))].filter(a => a !== "");
+      filterAsSelect.innerHTML = `<option value="">Semua</option>` +
+        uniqueAs.map(as => `<option value="${as}">${as}</option>`).join("");
+    }
+
     function renderTable() {
       const filter2D = document.getElementById("filter2D").value.trim();
       const angkaMainList = document.getElementById("angkaMain").value
         .split(/[\s,]+/)
         .map(s => s.trim())
         .filter(s => s !== "");
+      const filterAs = filterAsSelect.value;
 
       const keys = Object.keys(data[0]);
       tbody.innerHTML = "";
@@ -89,13 +105,14 @@
         const kepala = String(r["Kepala"] ?? "").padStart(2, "0");
         const ekor = String(r["Ekor"] ?? "").padStart(2, "0");
 
+        // Filter berdasarkan AS
+        if (filterAs && r["As"] != filterAs) return;
+
         // Filter berdasarkan input 2D
         if (filter2D) {
           if (filter2D.length === 1) {
-            // Partial match: kepala diawali angka atau ekor diakhiri angka
             if (!(kepala.startsWith(filter2D) || ekor.endsWith(filter2D))) return;
           } else {
-            // Exact match untuk 2 digit
             if (kepala !== filter2D && ekor !== filter2D) return;
           }
         }
@@ -141,6 +158,7 @@
 
     document.getElementById("filter2D").addEventListener("input", renderTable);
     document.getElementById("angkaMain").addEventListener("input", renderTable);
+    filterAsSelect.addEventListener("change", renderTable);
 
     fetchData();
   </script>
