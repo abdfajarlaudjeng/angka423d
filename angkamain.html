@@ -1,319 +1,125 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>DATA 2D – Google Sheet Viewer</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Data 2D dengan Validasi</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    th.sortable { cursor: pointer; }
-    th.sortable .arrow { display:inline-block; width:0; height:0; margin-left:6px; border-left:5px solid transparent; border-right:5px solid transparent; }
-    th.sortable.asc .arrow { border-bottom:7px solid currentColor; }
-    th.sortable.desc .arrow { border-top:7px solid currentColor; }
-    /* Wrap teks */
-    table td, table th {
-      white-space: normal !important;
-      word-break: break-word;
-    }
-  </style>
 </head>
-<body class="bg-gray-50 text-gray-800">
+<body class="bg-gray-100 p-4">
+  <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg p-4">
+    <h1 class="text-2xl font-bold mb-4">Data 2D - Google Sheets</h1>
 
-  <div class="flex min-h-screen">
-    <!-- Sidebar -->
-    <aside class="w-64 bg-gray-800 text-white flex-shrink-0">
-      <div class="p-4 text-lg font-bold border-b border-gray-700">
-        📊 Data Dashboard
-      </div>
-      <nav class="p-4 space-y-2">
-        <a href="#" class="block px-3 py-2 rounded hover:bg-gray-700">🏠 Beranda</a>
-        <a href="index.html" class="block px-3 py-2 rounded hover:bg-gray-700">📄 Data 2D</a>
-        <a href="angkamain.html" class="block px-3 py-2 rounded hover:bg-gray-700">📊 Angka Main</a>
-        <a href="#" class="block px-3 py-2 rounded hover:bg-gray-700">⚙️ Pengaturan</a>
-      </nav>
-    </aside>
+    <!-- Input Angka Main -->
+    <div class="mb-4">
+      <label for="angkaMain" class="block font-semibold mb-1">Angka Main</label>
+      <textarea id="angkaMain" rows="2" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring" placeholder="Pisahkan dengan spasi atau koma"></textarea>
+    </div>
 
-    <!-- Main Content -->
-    <main class="flex-1 p-4 sm:p-6">
-      <header class="mb-4 sm:mb-6">
-        <h1 class="text-2xl sm:text-3xl font-bold">DATA 2D</h1>
-        <p class="text-sm text-gray-500">Sumber: Google Spreadsheet (read-only via opensheet.elk.sh)</p>
-      </header>
-
-      <!-- Controls -->
-      <div class="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-3">
-        <div class="flex items-center gap-2">
-          <input id="searchInput" type="search" placeholder="Cari di semua kolom…" class="w-72 max-w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring" />
-          <button id="clearSearch" class="px-3 py-2 border rounded-lg hover:bg-gray-100">Bersihkan</button>
-        </div>
-        <div class="flex items-center gap-2">
-          <label class="text-sm text-gray-600">Baris per halaman</label>
-          <select id="pageSize" class="px-2 py-2 border rounded-lg">
-            <option>10</option>
-            <option selected>25</option>
-            <option>50</option>
-            <option>100</option>
-          </select>
-          <button id="reloadBtn" class="px-3 py-2 border rounded-lg hover:bg-gray-100">Muat Ulang</button>
-          <button id="downloadCsv" class="px-3 py-2 border rounded-lg hover:bg-gray-100">Unduh CSV</button>
-        </div>
-      </div>
-
-      <!-- Input Angka Main -->
-      <div class="mb-3 p-3 bg-white rounded-xl shadow-sm border">
-        <label for="angkaMain" class="block text-sm font-semibold mb-1">Angka Main (pisahkan dengan koma atau spasi)</label>
-        <textarea id="angkaMain" rows="2" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring"></textarea>
-        <button id="cekAngka" class="mt-2 px-3 py-2 border rounded-lg hover:bg-gray-100">Cek Validasi</button>
-      </div>
-
-      <!-- Status -->
-      <div id="status" class="text-sm text-gray-500 mb-2">Memuat data…</div>
-
-      <!-- Table wrapper -->
-      <div class="overflow-auto border rounded-xl bg-white shadow-sm">
-        <table id="dataTable" class="min-w-full text-sm">
-          <thead class="bg-gray-100"></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-
-      <!-- Pagination -->
-      <div class="flex items-center justify-between mt-3">
-        <div id="pageInfo" class="text-sm text-gray-600">Halaman 1</div>
-        <div class="flex gap-2">
-          <button id="prevBtn" class="px-3 py-2 border rounded-lg hover:bg-gray-100">Sebelumnya</button>
-          <button id="nextBtn" class="px-3 py-2 border rounded-lg hover:bg-gray-100">Berikutnya</button>
-        </div>
-      </div>
-    </main>
+    <!-- Table -->
+    <div class="overflow-x-auto">
+      <table class="min-w-full border border-gray-300 text-sm">
+        <thead id="thead" class="bg-gray-200"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
   </div>
 
   <script>
-    const SPREADSHEET_ID = "1tX6qfI_0PhrpmGxz4qqaT0_8YHKhPwE3dPHguPvNFmU";
-    const SHEET_NAME = "DATA 2D";
-    const API_URL = `https://opensheet.elk.sh/${encodeURIComponent(SPREADSHEET_ID)}/${encodeURIComponent(SHEET_NAME)}`;
+    const thead = document.getElementById("thead");
+    const tbody = document.getElementById("tbody");
 
-    let rawData = [];
-    let filteredData = [];
+    let data = [];
     let sortKey = null;
     let sortDir = "asc";
-    let currentPage = 1;
 
-    const statusEl = document.getElementById("status");
-    const thead = document.querySelector("#dataTable thead");
-    const tbody = document.querySelector("#dataTable tbody");
-    const searchInput = document.getElementById("searchInput");
-    const clearSearch = document.getElementById("clearSearch");
-    const pageSizeSel = document.getElementById("pageSize");
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
-    const pageInfo = document.getElementById("pageInfo");
-    const reloadBtn = document.getElementById("reloadBtn");
-    const downloadCsvBtn = document.getElementById("downloadCsv");
+    async function fetchData() {
+      const url = "https://docs.google.com/spreadsheets/d/1tX6qfI_0PhrpmGxz4qqaT0_8YHKhPwE3dPHguPvNFmU/gviz/tq?tqx=out:json&sheet=DATA%202D";
+      const res = await fetch(url);
+      const text = await res.text();
+      const json = JSON.parse(text.substr(47).slice(0, -2));
 
-    function normalize(value) {
-      return (value ?? "").toString().toLowerCase();
-    }
+      data = json.table.rows.map(r => {
+        let row = {};
+        json.table.cols.forEach((c, i) => {
+          if (c && c.label) row[c.label] = r.c[i] ? r.c[i].v : "";
+        });
+        return row;
+      });
 
-    function compare(a, b) {
-      if (a == null && b != null) return -1;
-      if (a != null && b == null) return 1;
-      const an = +a; const bn = +b;
-      const aIsNum = !isNaN(an) && a !== "" && a !== null;
-      const bIsNum = !isNaN(bn) && b !== "" && b !== null;
-      if (aIsNum && bIsNum) return an - bn;
-      return a.toString().localeCompare(b.toString(), undefined, { numeric: true, sensitivity: "base" });
-    }
-
-    function paginate(data) {
-      const size = parseInt(pageSizeSel.value, 10) || 25;
-      const total = data.length;
-      const maxPage = Math.max(1, Math.ceil(total / size));
-      if (currentPage > maxPage) currentPage = maxPage;
-      const start = (currentPage - 1) * size;
-      const end = start + size;
-      return { slice: data.slice(start, end), total, maxPage, size };
-    }
-
-    function setStatus(msg, type = "info") {
-      const colors = { info: "text-gray-500", ok: "text-green-600", err: "text-red-600" };
-      statusEl.className = `text-sm ${colors[type] || colors.info} mb-2`;
-      statusEl.textContent = msg;
+      const keys = Object.keys(data[0]);
+      buildHeader(keys);
+      buildBody(data, keys);
     }
 
     function buildHeader(keys) {
       thead.innerHTML = "";
       const tr = document.createElement("tr");
+
       keys.forEach(k => {
         const th = document.createElement("th");
         th.textContent = k;
-        th.className = "sortable px-3 py-2 text-left font-semibold border-b";
-        th.dataset.key = k;
-        const arrow = document.createElement("span");
-        arrow.className = "arrow";
-        th.appendChild(arrow);
-        th.addEventListener("click", () => {
-          if (sortKey === k) {
-            sortDir = (sortDir === "asc") ? "desc" : "asc";
-          } else {
-            sortKey = k; sortDir = "asc";
-          }
-          render();
-        });
+        th.className = "px-3 py-2 text-left font-semibold border";
         tr.appendChild(th);
       });
+
+      const thValidasi = document.createElement("th");
+      thValidasi.textContent = "Validasi";
+      thValidasi.className = "px-3 py-2 text-left font-semibold border";
+      tr.appendChild(thValidasi);
+
       thead.appendChild(tr);
     }
 
     function buildBody(rows, keys) {
       tbody.innerHTML = "";
-      if (rows.length === 0) {
-        const tr = document.createElement("tr");
-        const td = document.createElement("td");
-        td.colSpan = keys.length || 1;
-        td.className = "px-3 py-3 text-center text-gray-500";
-        td.textContent = "Tidak ada data.";
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-        return;
-      }
-      const frag = document.createDocumentFragment();
       rows.forEach(r => {
         const tr = document.createElement("tr");
-        tr.className = "odd:bg-white even:bg-gray-50";
         keys.forEach(k => {
           const td = document.createElement("td");
-          td.className = "px-3 py-2 border-b";
           td.textContent = r[k] ?? "";
+          td.className = "px-3 py-2 border";
           tr.appendChild(td);
         });
-        frag.appendChild(tr);
+
+        const tdValidasi = document.createElement("td");
+        tdValidasi.textContent = "-";
+        tdValidasi.className = "px-3 py-2 border text-center";
+        tr.appendChild(tdValidasi);
+
+        tbody.appendChild(tr);
       });
-      tbody.appendChild(frag);
-    }
-
-    function updateSortIndicators() {
-      document.querySelectorAll("th.sortable").forEach(th => {
-        th.classList.remove("asc", "desc");
-        if (th.dataset.key === sortKey) th.classList.add(sortDir);
-      });
-    }
-
-    function toCSV(data, keys) {
-      const escape = (v) => {
-        if (v == null) return "";
-        const s = v.toString().replaceAll('"','""');
-        if (/[",\n]/.test(s)) return `"${s}"`;
-        return s;
-      };
-      const header = keys.map(escape).join(",");
-      const rows = data.map(row => keys.map(k => escape(row[k])).join(","));
-      return [header, ...rows].join("\n");
-    }
-
-    function render() {
-      let data = [...filteredData];
-      const keys = data.length ? Object.keys(data[0]) : (rawData[0] ? Object.keys(rawData[0]) : []);
-      if (!thead.firstChild && keys.length) buildHeader(keys);
-      if (sortKey) {
-        data.sort((ra, rb) => {
-          const c = compare(ra[sortKey], rb[sortKey]);
-          return sortDir === "asc" ? c : -c;
-        });
-      }
-      const { slice, total, maxPage } = paginate(data);
-      buildBody(slice, keys);
-      updateSortIndicators();
-      pageInfo.textContent = `Halaman ${currentPage} dari ${maxPage} • Total ${total} baris`;
-
-      // Auto-validasi jika ada angka main
-      const textareaVal = document.getElementById("angkaMain").value.trim();
-      if (textareaVal) cekValidasi();
-    }
-
-    function applyFilter() {
-      const q = normalize(searchInput.value);
-      if (!q) {
-        filteredData = [...rawData];
-      } else {
-        filteredData = rawData.filter(row => {
-          return Object.values(row).some(v => normalize(v).includes(q));
-        });
-      }
-      currentPage = 1;
-      render();
-    }
-
-    async function fetchData() {
-      setStatus("Memuat data…");
-      try {
-        const res = await fetch(API_URL, { cache: "no-store" });
-        if (!res.ok) throw new Error(`Gagal memuat: ${res.status}`);
-        const json = await res.json();
-        rawData = Array.isArray(json) ? json : [];
-        filteredData = [...rawData];
-        currentPage = 1;
-        setStatus(`Berhasil memuat ${rawData.length} baris dari "${SHEET_NAME}".`, "ok");
-        thead.innerHTML = "";
-        sortKey = null; sortDir = "asc";
-        render();
-      } catch (err) {
-        console.error(err);
-        setStatus("Tidak bisa memuat data. Pastikan Spreadsheet dibagikan publik dan nama sheet benar.", "err");
-        rawData = []; filteredData = [];
-        render();
-      }
     }
 
     function cekValidasi() {
       const input = document.getElementById("angkaMain").value;
-      const angkaMainList = input
-        .split(/[\s,]+/)
-        .map(s => s.trim())
-        .filter(s => s !== "");
+      const angkaMainList = input.split(/[\s,]+/).map(s => s.trim()).filter(s => s !== "");
 
       const rows = tbody.querySelectorAll("tr");
       rows.forEach(row => {
         const cells = row.querySelectorAll("td");
         if (cells.length === 0) return;
-        const angka2D = cells[0].textContent.trim(); // kolom pertama dianggap kolom 2D
+
+        const angka2D = cells[0].textContent.trim();
+        const cellValidasi = cells[cells.length - 1];
+
         if (angkaMainList.includes(angka2D)) {
           row.classList.remove("bg-red-100");
           row.classList.add("bg-green-100");
+          cellValidasi.textContent = "✅ Cocok";
+          cellValidasi.classList.remove("text-red-600");
+          cellValidasi.classList.add("text-green-600", "font-semibold");
         } else {
           row.classList.remove("bg-green-100");
           row.classList.add("bg-red-100");
+          cellValidasi.textContent = "❌ Tidak Cocok";
+          cellValidasi.classList.remove("text-green-600");
+          cellValidasi.classList.add("text-red-600", "font-semibold");
         }
       });
     }
 
-    // Event listeners
-    document.getElementById("cekAngka").addEventListener("click", cekValidasi);
-    searchInput.addEventListener("input", () => applyFilter());
-    clearSearch.addEventListener("click", () => { searchInput.value = ""; applyFilter(); });
-    pageSizeSel.addEventListener("change", () => { currentPage = 1; render(); });
-    prevBtn.addEventListener("click", () => { if (currentPage > 1) { currentPage--; render(); }});
-    nextBtn.addEventListener("click", () => {
-      const total = filteredData.length;
-      const size = parseInt(pageSizeSel.value, 10) || 25;
-      const maxPage = Math.max(1, Math.ceil(total / size));
-      if (currentPage < maxPage) { currentPage++; render(); }
-    });
-    reloadBtn.addEventListener("click", fetchData);
-    downloadCsvBtn.addEventListener("click", () => {
-      const data = filteredData;
-      const keys = data.length ? Object.keys(data[0]) : [];
-      const csv = toCSV(data, keys);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `DATA_2D_${new Date().toISOString().slice(0,10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    });
+    document.getElementById("angkaMain").addEventListener("input", cekValidasi);
 
     fetchData();
   </script>
