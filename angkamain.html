@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Data 2D dengan Filter & Validasi + Filter As</title>
+  <title>Data 2D dengan Filter & Validasi + Filter AS 0-9</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 p-4">
@@ -26,6 +26,16 @@
         <label class="block font-semibold mb-1">Filter As</label>
         <select id="filterAs" class="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring">
           <option value="">Semua</option>
+          <option value="0">AS 0</option>
+          <option value="1">AS 1</option>
+          <option value="2">AS 2</option>
+          <option value="3">AS 3</option>
+          <option value="4">AS 4</option>
+          <option value="5">AS 5</option>
+          <option value="6">AS 6</option>
+          <option value="7">AS 7</option>
+          <option value="8">AS 8</option>
+          <option value="9">AS 9</option>
         </select>
       </div>
     </div>
@@ -61,7 +71,6 @@
 
       const keys = Object.keys(data[0]);
       buildHeader(keys);
-      buildAsFilterOptions();
       renderTable();
     }
 
@@ -84,12 +93,6 @@
       thead.appendChild(tr);
     }
 
-    function buildAsFilterOptions() {
-      const uniqueAs = [...new Set(data.map(r => r["As"]))].filter(a => a !== "");
-      filterAsSelect.innerHTML = `<option value="">Semua</option>` +
-        uniqueAs.map(as => `<option value="${as}">${as}</option>`).join("");
-    }
-
     function renderTable() {
       const filter2D = document.getElementById("filter2D").value.trim();
       const angkaMainList = document.getElementById("angkaMain").value
@@ -104,9 +107,10 @@
       data.forEach(r => {
         const kepala = String(r["Kepala"] ?? "").padStart(2, "0");
         const ekor = String(r["Ekor"] ?? "").padStart(2, "0");
+        const asValue = String(r["As"] ?? "").trim();
 
-        // Filter berdasarkan AS
-        if (filterAs && r["As"] != filterAs) return;
+        // Filter berdasarkan AS (0-9)
+        if (filterAs && asValue !== filterAs) return;
 
         // Filter berdasarkan input 2D
         if (filter2D) {
